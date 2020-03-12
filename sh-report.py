@@ -1,5 +1,9 @@
 #!/usr/bin/env pypy3
 
+"""
+Produce the report in draft-nottingham-binary-structurd-headers
+"""
+
 from collections import defaultdict
 from operator import itemgetter
 import sys
@@ -8,7 +12,7 @@ import sys
 from header_runner import Runner
 
 
-class CC(Runner):
+class SHReport(Runner):
 
     def __init__(self):
         Runner.__init__(self)
@@ -47,7 +51,7 @@ class CC(Runner):
 
 
 if __name__ == "__main__":
-    checker = CC()
+    checker = SHReport()
     try:
         checker.run(sys.argv[1])
     except KeyboardInterrupt:
