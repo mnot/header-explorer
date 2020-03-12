@@ -99,9 +99,9 @@ def parseln(line):
                 quoted = not quoted
             else:
                 buf.append(char)
-        assert not quoted, line
-        assert not escaped, line
-        assert len(row) == 60, line
+    assert len(row) == 60, line
+    assert not escaped, line
+    assert not quoted, line
     return row
 
 
@@ -118,6 +118,8 @@ def getHdr(out, name, value):
 
 
 def parseOtherHdrs(out, otherValue):
+    if otherValue is None:
+        return
     otherHeaders = {}
     lastHeader = None
     candidates = otherValue.split(",")
