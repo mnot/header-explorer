@@ -8,7 +8,7 @@ from struct import unpack_from, error as structError
 import sys
 from time import time
 
-from shhh import parse as shhh_parse, __version__ as shhh_version
+from http_sfv import parse as sfv_parse, __version__ as sfv_version
 
 locale.setlocale(locale.LC_ALL, "")
 
@@ -135,4 +135,4 @@ class Runner:
 
     @functools.lru_cache(maxsize=2 ** 15)
     def parseHeader(self, name, value):
-        return shhh_parse(value, self.HEADERMAP[name])
+        return sfv_parse(value, self.HEADERMAP[name])
