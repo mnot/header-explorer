@@ -13,7 +13,6 @@ from header_runner import Runner
 
 
 class SHReport(Runner):
-
     def __init__(self):
         Runner.__init__(self)
         self.succeed = defaultdict(int)
@@ -30,9 +29,7 @@ class SHReport(Runner):
             self.skipped[name] += 1
 
     def show(self):
-        allAttempted = list(
-            set(list(self.succeed.keys()) + list(self.failure.keys()))
-        )
+        allAttempted = list(set(list(self.succeed.keys()) + list(self.failure.keys())))
         allAttempted.sort()
         print()
         print(f"* Requests: {checker.cursor:n}")
