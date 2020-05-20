@@ -11,6 +11,7 @@ import locale
 from struct import pack
 import sys
 from time import time
+from urllib.parse import urlsplit
 
 TICK = 100000
 
@@ -114,6 +115,8 @@ def writeln(name, value):
 def getHdr(out, name, value):
     if value is None:
         return
+    if name == ":url":
+        out.append(writeln(":origin", url_to_origin(url)))
     out.append(writeln(name, value))
 
 
@@ -149,6 +152,21 @@ def parseCandidate(candidate):
             return key, v.strip()
     else:
         return None, f",{candidate}"
+
+
+def url_to_origin(url):
+    "Convert an URL to an RFC6454 Origin."
+    default_port = {"http": 80, "https": 443}
+    try:
+        p_url = urlsplit(url)
+        origin = "%s://%s:%s" % (
+            p_url.scheme.lower(),
+            p_url.hostname.lower(),
+            p_url.port or default_port.get(p_url.scheme, 0),
+        )
+    except (AttributeError, ValueError):
+        origin = None
+    return origin
 
 
 if __name__ == "__main__":
