@@ -64,6 +64,9 @@ class Runner:
 
     def __init__(self):
         self.cursor = 0
+        self.uninteresting = 0
+        self.too_long = 0
+        self.empty = 0
 
     def run(self, filename):
         # bring some things into the local namespace for a tight loop.
@@ -99,7 +102,7 @@ class Runner:
                 else:
                     headers[name] = value
 
-    def parsed(self, url, name, parsed):
+    def parsed(self, url, name, parsed, raw_value):
         raise NotImplementedError
 
     def raw(self, url, name, value, why):
@@ -120,16 +123,19 @@ class Runner:
                 url = value
                 continue
             if self.INTERESTING and name not in self.INTERESTING:
+                self.uninteresting += 1
                 continue
             if len(value) > 254:
+                self.too_long += 1
                 continue  # we skip oversized headers because they could be truncated
             if value.isspace():
+                self.empty += 1
                 continue  # we don't consider empty headers to be a problem
             if name not in self.HEADERMAP:
                 self.raw(url, name, value, "unrecognised")
                 continue
             try:
-                self.parsed(url, name, self.parseHeader(name, value))
+                self.parsed(url, name, self.parseHeader(name, value), value)
             except Exception as why:
                 self.raw(url, name, value, why)
 
