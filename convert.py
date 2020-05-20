@@ -116,7 +116,7 @@ def getHdr(out, name, value):
     if value is None:
         return
     if name == ":url":
-        out.append(writeln(":origin", url_to_origin(url)))
+        out.append(writeln(":origin", url_to_origin(value)))
     out.append(writeln(name, value))
 
 
