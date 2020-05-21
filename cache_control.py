@@ -201,14 +201,14 @@ class CC(Runner):
         print(f"* Clashing directives")
         maxage_clash_rate = self.rate(self.maxage_clash, self.maxage_count)
         print(
-            f"  - {self.maxage_clash:n} with [s]max-age and conflicting directives present"
+            f"  - {self.maxage_clash:n} with [s]max-age and conflicting directives present "
             + f"({maxage_clash_rate:1.3f}% of responses with [s]max-age)"
         )
         public_clash_rate = self.rate(
             self.public_clash, self.defined_directives["public"]
         )
         print(
-            f"  - {self.public_clash:n} with public and conflicting directives"
+            f"  - {self.public_clash:n} with public and conflicting directives "
             + f"({public_clash_rate:1.3f}% of responses with public)"
         )
 
