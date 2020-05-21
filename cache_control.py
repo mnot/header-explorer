@@ -1,8 +1,10 @@
 #!/usr/bin/env pypy3
 
 from collections import defaultdict
+from decimal import Decimal
 import difflib
 from functools import partial, lru_cache
+from itertools import chain
 from operator import itemgetter
 import sys
 
@@ -47,7 +49,11 @@ class CC(Runner):
         self.request_directives = defaultdict(int)
         self.misspelled_directives = defaultdict(int)
         self.misspelled_samples = defaultdict(lambda: defaultdict(int))
+        self.misspelled_directives_by_origin = defaultdict(lambda: defaultdict(int))
         self.other_directives = defaultdict(int)
+
+        self.directives_by_origin = defaultdict(lambda: defaultdict(int))
+        self.total_origins = 0
 
         self.param_counts = defaultdict(int)
         self.maxage_count = 0
@@ -67,10 +73,11 @@ class CC(Runner):
             self.DEFINED_DIRECTIVES + self.REQUEST_DIRECTIVES + self.INFORMAL_DIRECTIVES
         )
 
-    def parsed(self, url, name, parsed, raw_value):
+    def parsed(self, url, url_origin, name, parsed, raw_value):
         self.parse_succeed += 1
         for directive in parsed:
             self.directive_count += 1
+            self.directives_by_origin[directive][url_origin] += 1
             if directive in self.DEFINED_DIRECTIVES:
                 self.defined_directives[directive] += 1
             elif directive in self.INFORMAL_DIRECTIVES:
@@ -82,6 +89,9 @@ class CC(Runner):
                 if similar_directive:
                     self.misspelled_directives[similar_directive] += 1
                     self.misspelled_samples[similar_directive][directive] += 1
+                    self.misspelled_directives_by_origin[similar_directive][
+                        url_origin
+                    ] += 1
                 else:
                     self.other_directives[directive] += 1
 
@@ -120,7 +130,7 @@ class CC(Runner):
                 if self.PUBLIC_CLASHES.intersection(parsed):
                     self.public_clash += 1
 
-    def raw(self, url, name, value, why):
+    def raw(self, url, url_origin, name, value, why):
         if why != "unrecognised":
             self.parse_fail += 1
 
@@ -128,6 +138,13 @@ class CC(Runner):
         print(f"* Total header sets: {self.cursor:n}")
         self.total_headers, hdr_rate = self.compare(self.parse_fail, self.parse_succeed)
         hdr_digits = len(f"{self.total_headers:n}")
+
+        origins = set()
+        origins.update(
+            chain.from_iterable([v.keys() for v in self.directives_by_origin.values()])
+        )
+        self.total_origins = len(origins)
+
         print(f"* Cache-Control Headers")
         print(f"  {self.total_headers:{hdr_digits}n} Cache-Control headers total")
         print(f"  {self.parse_succeed:{hdr_digits}n} headers successfully parsed")
@@ -137,6 +154,7 @@ class CC(Runner):
         )
         print(f"  {self.empty:{hdr_digits}n} headers had empty values")
         print(f"  {hdr_rate:1.3f}% failed to parse")
+        print(f"  {self.total_origins:{hdr_digits}n} total origins")
         print()
 
         self.dir_digits = len(f"{self.directive_count:n}")
@@ -150,7 +168,10 @@ class CC(Runner):
         self.summarise("Informal Directives", self.informal_directives)
         self.summarise("Request Directives", self.request_directives)
         self.summarise(
-            "Misspelled Directives", self.misspelled_directives, self.misspelled_samples
+            "Misspelled Directives",
+            self.misspelled_directives,
+            self.misspelled_samples,
+            self.misspelled_directives_by_origin,
         )
         self.summarise("Unrecognised Directives", self.other_directives)
 
@@ -191,7 +212,9 @@ class CC(Runner):
             + f"({public_clash_rate:1.3f}% of responses with public)"
         )
 
-    def summarise(self, title, results, samples=None):
+    def summarise(self, title, results, samples=None, origins=None):
+        if not origins:
+            origins = self.directives_by_origin
         if len(results) > self.SHOW_DIRECTIVES:
             print(f"* {title} (top {self.SHOW_DIRECTIVES})")
         else:
@@ -199,9 +222,11 @@ class CC(Runner):
         for name, value in sorted(results.items(), key=itemgetter(1), reverse=True)[
             : self.SHOW_DIRECTIVES
         ]:
+            origin_count = len(origins[name])
             print(
                 f"  - {value:{self.dir_digits}n} {name} "
-                + f"({self.rate(value, self.total_headers):1.3f}% of CC headers seen)"
+                + f"({self.rate(value, self.total_headers):1.3f}% of CC headers seen "
+                + f"on {origin_count} / {self.rate(origin_count, self.total_origins):1.3f}% of origins)"
             )
             if samples:
                 sample = ", ".join(

@@ -102,10 +102,10 @@ class Runner:
                 else:
                     headers[name] = value
 
-    def parsed(self, url, name, parsed, raw_value):
+    def parsed(self, url, url_origin, name, parsed, raw_value):
         raise NotImplementedError
 
-    def raw(self, url, name, value, why):
+    def raw(self, url, url_origin, name, value, why):
         raise NotImplementedError
 
     def parseLine(self, data, offset):
@@ -118,9 +118,13 @@ class Runner:
     def check(self, headers):
         log = False
         url = ""
+        origin = None
         for name, value in headers.items():
             if name == b":url":
                 url = value
+                continue
+            if name == b":origin":
+                origin = value
                 continue
             if self.INTERESTING and name not in self.INTERESTING:
                 self.uninteresting += 1
@@ -132,12 +136,12 @@ class Runner:
                 self.empty += 1
                 continue  # we don't consider empty headers to be a problem
             if name not in self.HEADERMAP:
-                self.raw(url, name, value, "unrecognised")
+                self.raw(url, origin, name, value, "unrecognised")
                 continue
             try:
-                self.parsed(url, name, self.parseHeader(name, value), value)
-            except Exception as why:
-                self.raw(url, name, value, why)
+                self.parsed(url, origin, name, self.parseHeader(name, value), value)
+            except ValueError as why:
+                self.raw(url, origin, name, value, why)
 
     @functools.lru_cache(maxsize=2 ** 15)
     def parseHeader(self, name, value):
