@@ -236,7 +236,7 @@ class CC(Runner):
             print(
                 f"  - {value:{self.dir_digits}n} {name} "
                 + f"({self.rate(value, self.total_headers):1.3f}% of CC headers seen "
-                + f"on {origin_count} / {self.rate(origin_count, self.total_origins):1.3f}% of origins)"
+                + f"on {origin_count:n} / {self.rate(origin_count, self.total_origins):1.3f}% of origins)"
             )
             if samples:
                 sample = ", ".join(
