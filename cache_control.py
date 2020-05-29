@@ -51,6 +51,7 @@ class CC(Runner):
         self.misspelled_samples = defaultdict(lambda: defaultdict(int))
         self.misspelled_directives_by_origin = defaultdict(lambda: defaultdict(int))
         self.other_directives = defaultdict(int)
+        self.other_directives_by_origin = defaultdict(lambda: defaultdict(int))
 
         self.directives_by_origin = defaultdict(lambda: defaultdict(int))
         self.total_origins = 0
@@ -94,6 +95,7 @@ class CC(Runner):
                     ] += 1
                 else:
                     self.other_directives[directive] += 1
+                    self.other_directives_by_origin[directive][url_origin] += 1
 
             params = parsed[directive][1]
             if params:
@@ -173,7 +175,11 @@ class CC(Runner):
             self.misspelled_samples,
             self.misspelled_directives_by_origin,
         )
-        self.summarise("Unrecognised Directives", self.other_directives)
+        self.summarise(
+            "Unrecognised Directives",
+            self.other_directives,
+            self.other_directives_by_origin,
+        )
 
         print(f"* Maxage bad values (% of [s]max-age directives)")
         mar = partial(self.rate, whole=self.maxage_count)
@@ -220,7 +226,9 @@ class CC(Runner):
         if len(results) > self.SHOW_DIRECTIVES:
             extra = f" (top {self.SHOW_DIRECTIVES})"
         rate = self.rate(total_directives, self.directive_count)
-        print(f"* {title}{extra} - {total_directives:n} ({rate:1.3f}% of all directives)")
+        print(
+            f"* {title}{extra} - {total_directives:n} ({rate:1.3f}% of all directives)"
+        )
         for name, value in sorted(results.items(), key=itemgetter(1), reverse=True)[
             : self.SHOW_DIRECTIVES
         ]:
