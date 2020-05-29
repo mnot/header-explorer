@@ -213,12 +213,14 @@ class CC(Runner):
         )
 
     def summarise(self, title, results, samples=None, origins=None):
+        total_directives = sum(results.values())
         if not origins:
             origins = self.directives_by_origin
+        extra = ""
         if len(results) > self.SHOW_DIRECTIVES:
-            print(f"* {title} (top {self.SHOW_DIRECTIVES})")
-        else:
-            print(f"* {title}")
+            extra = f" (top {self.SHOW_DIRECTIVES})"
+        rate = self.rate(total_directives, self.directive_count)
+        print(f"* {title}{extra} - {total_directives:n} ({rate:1.3f}% of all directives)")
         for name, value in sorted(results.items(), key=itemgetter(1), reverse=True)[
             : self.SHOW_DIRECTIVES
         ]:
