@@ -4,7 +4,7 @@ from collections import defaultdict, Counter
 from decimal import Decimal
 import difflib
 from functools import partial, lru_cache
-from itertools import chain
+from itertools import chain, permutations
 from operator import itemgetter
 import sys
 
@@ -36,10 +36,6 @@ class CacheControl(Runner):
     MAXAGE_DIRECTIVES = ["max-age", "s-maxage"]
     SMALL = 60
     MAXAGE_CLASHES = set(["no-store", "no-cache"])
-    PUBLIC_CLASHES = set(["max-age", "s-maxage"])
-    PUBLIC_CONFLICTS = set(["no-store", "private"])
-    MUST_REVALIDATE_CLASHES = set(["no-store", "no-cache"])
-    MUST_REVALIDATE_CONFLICTS = set(["stale-while-revalidate", "stale-if-error"])
     SHOW_DIRECTIVES = 25
     SHOW_SAMPLES = 10
     SIMILARITY_RATIO = 0.8
@@ -63,6 +59,8 @@ class CacheControl(Runner):
         self.directives_by_type = defaultdict(lambda: Counter())
         self.total_origins = 0
 
+        self.coincidences = Counter()
+
         self.param_counts = Counter()
         self.maxage_count = 0
         self.maxage_small = Counter()
@@ -73,10 +71,6 @@ class CacheControl(Runner):
         self.maxage_nonnumeric_sample = Counter()
         self.maxage_clash = 0
         self.maxage_conflicting = 0
-        self.public_clash = 0
-        self.public_conflicting = 0
-        self.mr_clash = 0
-        self.mr_conflicting = 0
 
         self.total_headers = 0
         self.dir_digits = 15
@@ -103,6 +97,16 @@ class CacheControl(Runner):
         self.parse_succeed += 1
         maxage_found = False
         maxage_conflict_found = False
+
+        for pair in set(
+            [
+                frozenset({a, b})
+                for a, b in permutations(parsed.keys(), 2)
+                if a in self.DEFINED_DIRECTIVES and b in self.DEFINED_DIRECTIVES
+            ]
+        ):
+            self.coincidences[pair] += 1
+
         for directive in parsed:
             self.directive_count += 1
             self.directives_by_origin[directive][url_origin] += 1
@@ -162,18 +166,6 @@ class CacheControl(Runner):
                         self.maxage_conflicting += 1
                     else:
                         self.maxage_clash += 1
-
-            elif directive == "public":
-                if self.PUBLIC_CLASHES.intersection(parsed):
-                    self.public_clash += 1
-                if self.PUBLIC_CONFLICTS.intersection(parsed):
-                    self.public_conflicting += 1
-
-            elif directive == "must-revalidate":
-                if self.MUST_REVALIDATE_CLASHES.intersection(parsed):
-                    self.mr_clash += 1
-                if self.MUST_REVALIDATE_CONFLICTS.intersection(parsed):
-                    self.mr_conflicting += 1
 
     def show(self):
         print(f"* Total header sets: {self.cursor:n}")
@@ -263,59 +255,61 @@ class CacheControl(Runner):
             self.maxage_nonnumeric_sample.items(), key=itemgetter(1), reverse=True
         )[: self.SHOW_SAMPLES]:
             print(f"{self.padding}    - {name}, {value:n}")
+
         print()
         print(f"* Conflicting directives")
-
         self.show_conflict(
-            "[s]max-age",
+            "max-age",
+            self.MAXAGE_CLASHES,
             self.maxage_conflicting,
             self.maxage_count,
-            self.MAXAGE_CLASHES,
+            "[s]max-age=0",
         )
-
+        self.show_conflict("public", ["no-store", "private"])
         self.show_conflict(
-            "public",
-            self.public_conflicting,
-            self.defined_directives["public"],
-            self.PUBLIC_CONFLICTS,
-        )
-
-        self.show_conflict(
-            "must-revalidate",
-            self.mr_conflicting,
-            self.defined_directives["must-revalidate"],
-            self.MUST_REVALIDATE_CONFLICTS,
+            "must-revalidate", ["stale-while-revalidate", "stale-if-error"],
         )
 
         print()
         print(f"* Unnecessary directives")
-
         self.show_conflict(
-            "[s]max-age=0", self.maxage_clash, self.maxage_count, self.MAXAGE_CLASHES
+            "max-age",
+            self.MAXAGE_CLASHES,
+            self.maxage_clash,
+            self.maxage_count,
+            "[s]max-age=0",
         )
-
         self.show_conflict(
-            "public",
-            self.public_clash,
-            self.defined_directives["public"],
-            self.PUBLIC_CLASHES,
+            "public", ["max-age", "s-maxage"],
         )
-
         self.show_conflict(
-            "must-revalidate",
-            self.mr_clash,
-            self.defined_directives["must-revalidate"],
-            self.MUST_REVALIDATE_CLASHES,
+            "must-revalidate", ["no-store", "no-cache"],
         )
 
     def show_conflict(
-        self, directive_name, conflict_count, directive_count, clashing_directives
+        self,
+        directive_name,
+        clashing_directives,
+        clash_count=None,
+        directive_count=None,
+        display_name=None,
     ):
-        conflict_rate = self.rate(conflict_count, directive_count)
+        if not display_name:
+            display_name = directive_name
+        if not clash_count:
+            clash_count = sum(
+                [
+                    self.coincidences[frozenset({directive_name, clash})]
+                    for clash in clashing_directives
+                ]
+            )
+        if not directive_count:
+            directive_count = self.defined_directives[directive_name]
+        conflict_rate = self.rate(clash_count, directive_count)
         print(
-            f"  - {conflict_count:n} with {directive_name} "
+            f"  - {clash_count:n} with {display_name} "
             + f"and one of {', '.join(clashing_directives)} "
-            + f"({conflict_rate:1.3f}% of responses with {directive_name})"
+            + f"({conflict_rate:1.3f}% of responses with {display_name})"
         )
 
     def summarise(
