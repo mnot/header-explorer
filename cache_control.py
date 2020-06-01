@@ -227,24 +227,13 @@ class CC(Runner):
         )[: self.SHOW_SAMPLES]:
             print(f"{self.padding}    - {name}, {value:n}")
         print()
-        print(f"* Conflicting and unnecessary directives")
-
-        self.show_conflict(
-            "[s]max-age=0", self.maxage_clash, self.maxage_count, self.MAXAGE_CLASHES
-        )
+        print(f"* Conflicting directives")
 
         self.show_conflict(
             "[s]max-age",
             self.maxage_conflicting,
             self.maxage_count,
             self.MAXAGE_CLASHES,
-        )
-
-        self.show_conflict(
-            "public",
-            self.public_clash,
-            self.defined_directives["public"],
-            self.PUBLIC_CLASHES,
         )
 
         self.show_conflict(
@@ -256,16 +245,30 @@ class CC(Runner):
 
         self.show_conflict(
             "must-revalidate",
-            self.mr_clash,
+            self.mr_conflicting,
             self.defined_directives["must-revalidate"],
-            self.MUST_REVALIDATE_CLASHES,
+            self.MUST_REVALIDATE_CONFLICTS,
+        )
+
+        print()
+        print(f"* Unnecessary directives")
+
+        self.show_conflict(
+            "[s]max-age=0", self.maxage_clash, self.maxage_count, self.MAXAGE_CLASHES
+        )
+
+        self.show_conflict(
+            "public",
+            self.public_clash,
+            self.defined_directives["public"],
+            self.PUBLIC_CLASHES,
         )
 
         self.show_conflict(
             "must-revalidate",
-            self.mr_conflicting,
+            self.mr_clash,
             self.defined_directives["must-revalidate"],
-            self.MUST_REVALIDATE_CONFLICTS,
+            self.MUST_REVALIDATE_CLASHES,
         )
 
     def show_conflict(
