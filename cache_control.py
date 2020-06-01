@@ -16,7 +16,7 @@ CC = b"cache-control"
 
 class CacheControl(Runner):
 
-    INTERESTING = [b"cache-control"]
+    INTERESTING = [b"cache-control", b"content-type"]
     DEFINED_DIRECTIVES = [
         "max-age",
         "s-maxage",
@@ -59,6 +59,8 @@ class CacheControl(Runner):
         self.other_directives_by_origin = defaultdict(lambda: defaultdict(int))
 
         self.directives_by_origin = defaultdict(lambda: defaultdict(int))
+        self.content_types = defaultdict(int)
+        self.directives_by_type = defaultdict(lambda: defaultdict(int))
         self.total_origins = 0
 
         self.param_counts = defaultdict(int)
@@ -92,6 +94,11 @@ class CacheControl(Runner):
 
         url = raw_headers.get(b":url", "")
         url_origin = raw_headers.get(b":origin", "")
+        try:
+            content_type = parsed_headers.get(b"content-type", ["unknown"])[0]
+        except AttributeError:
+            content_type = "unknown"
+        self.content_types[content_type] += 1
         parsed = parsed_headers[CC]
         self.parse_succeed += 1
         maxage_found = False
@@ -99,6 +106,7 @@ class CacheControl(Runner):
         for directive in parsed:
             self.directive_count += 1
             self.directives_by_origin[directive][url_origin] += 1
+            self.directives_by_type[content_type][directive] += 1
             if directive in self.DEFINED_DIRECTIVES:
                 self.defined_directives[directive] += 1
             elif directive in self.INFORMAL_DIRECTIVES:
@@ -197,19 +205,36 @@ class CacheControl(Runner):
         print(f"  {self.directive_count:{self.dir_digits}n} cache directives total")
         print()
 
-        self.summarise("Defined Response Directives", self.defined_directives)
-        self.summarise("Informal Directives", self.informal_directives)
-        self.summarise("Request Directives", self.request_directives)
+        self.summarise(
+            "Defined Response Directives",
+            self.defined_directives,
+            origins=self.directives_by_origin,
+        )
+        self.summarise(
+            "Informal Directives",
+            self.informal_directives,
+            origins=self.directives_by_origin,
+        )
+        self.summarise(
+            "Request Directives",
+            self.request_directives,
+            origins=self.directives_by_origin,
+        )
         self.summarise(
             "Misspelled Directives",
             self.misspelled_directives,
             self.misspelled_samples,
-            self.misspelled_directives_by_origin,
+            origins=self.misspelled_directives_by_origin,
         )
         self.summarise(
             "Unrecognised Directives",
             self.other_directives,
             self.other_directives_by_origin,
+            origins=self.misspelled_directives_by_origin,
+        )
+
+        self.summarise(
+            "Directives by Content Type", self.content_types, self.directives_by_type,
         )
 
         print(f"* Maxage bad values (% of [s]max-age directives)")
@@ -291,28 +316,29 @@ class CacheControl(Runner):
 
     def summarise(self, title, results, samples=None, origins=None):
         total_directives = sum(results.values())
-        if not origins:
-            origins = self.directives_by_origin
         extra = ""
         if len(results) > self.SHOW_DIRECTIVES:
             extra = f" (top {self.SHOW_DIRECTIVES})"
         rate = self.rate(total_directives, self.directive_count)
-        print(
-            f"* {title}{extra} - {total_directives:n} ({rate:1.3f}% of all directives)"
-        )
+        print(f"* {title}{extra} - {total_directives:n} ({rate:1.3f}%)")
         for name, value in sorted(results.items(), key=itemgetter(1), reverse=True)[
             : self.SHOW_DIRECTIVES
         ]:
-            origin_count = len(origins[name])
             print(
                 f"  - {value:{self.dir_digits}n} {name} "
-                + f"({self.rate(value, self.total_headers):1.3f}% of CC headers seen "
-                + f"on {origin_count:n} / {self.rate(origin_count, self.total_origins):1.3f}% of origins)"
+                + f"({self.rate(value, self.total_headers):1.3f}%",
+                end="",
             )
+            if origins:
+                origin_count = len(origins[name])
+                origin_rate = self.rate(origin_count, self.total_origins)
+                print(f" on {origin_count:n} / {origin_rate:1.3f}% of origins)")
+            else:
+                print(")")
             if samples:
                 sample = ", ".join(
                     [
-                        f"{n} ({v})"
+                        f"{n} ({v:n} / {int(v/value*100)}%)"
                         for n, v in sorted(
                             samples[name].items(), key=itemgetter(1), reverse=True
                         )
