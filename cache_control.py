@@ -83,14 +83,13 @@ class CacheControl(Runner):
         )
 
     def analyse(self, raw_headers, parsed_headers, parse_errors):
-        if CC in raw_headers:
-            if CC in parsed_headers:
-                self.parsed_cc(parsed_headers, raw_headers)
-            else:
-                if parse_errors.get(CC, None):
-                    self.parse_fail += 1
+        if CC not in raw_headers:
+            return
+        if CC not in parsed_headers:
+            if parse_errors.get(CC, None):
+                self.parse_fail += 1
+            return
 
-    def parsed_cc(self, parsed_headers, raw_headers):
         url = raw_headers.get(b":url", "")
         url_origin = raw_headers.get(b":origin", "")
         parsed = parsed_headers[CC]
