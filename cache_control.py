@@ -37,7 +37,7 @@ class CacheControl(Runner):
     SMALL = 60
     MAXAGE_CLASHES = set(["no-store", "no-cache"])
     SHOW_DIRECTIVES = 25
-    SHOW_SAMPLES = 10
+    SHOW_SAMPLES = 5
     SIMILARITY_RATIO = 0.8
 
     def __init__(self):
