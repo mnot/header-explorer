@@ -98,13 +98,7 @@ class CacheControl(Runner):
         maxage_found = False
         maxage_conflict_found = False
 
-        for pair in set(
-            [
-                frozenset({a, b})
-                for a, b in permutations(parsed.keys(), 2)
-                if a in self.DEFINED_DIRECTIVES and b in self.DEFINED_DIRECTIVES
-            ]
-        ):
+        for pair in self.coincident_pairs(frozenset(parsed.keys())):
             self.coincidences[pair] += 1
 
         for directive in parsed:
@@ -375,6 +369,16 @@ class CacheControl(Runner):
                 highest_similarity = similarity
                 candidate = defined_directive
         return candidate
+
+    @lru_cache(maxsize=2 ** 12)
+    def coincident_pairs(self, directives):
+        return set(
+            [
+                frozenset({a, b})
+                for a, b in permutations(directives, 2)
+                if a in self.DEFINED_DIRECTIVES and b in self.DEFINED_DIRECTIVES
+            ]
+        )
 
 
 if __name__ == "__main__":
