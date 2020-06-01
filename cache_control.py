@@ -34,7 +34,10 @@ class CC(Runner):
     MAXAGE_DIRECTIVES = ["max-age", "s-maxage"]
     SMALL = 60
     MAXAGE_CLASHES = set(["no-store", "no-cache"])
-    PUBLIC_CLASHES = set(["max-age", "s-maxage", "no-store", "private"])
+    PUBLIC_CLASHES = set(["max-age", "s-maxage"])
+    PUBLIC_CONFLICTS = set(["no-store", "private"])
+    MUST_REVALIDATE_CLASHES = set(["no-store", "no-cache"])
+    MUST_REVALIDATE_CONFLICTS = set(["stale-while-revalidate", "stale-if-error"])
     SHOW_DIRECTIVES = 25
     SHOW_SAMPLES = 10
     SIMILARITY_RATIO = 0.8
@@ -67,6 +70,9 @@ class CC(Runner):
         self.maxage_clash = 0
         self.maxage_conflicting = 0
         self.public_clash = 0
+        self.public_conflicting = 0
+        self.mr_clash = 0
+        self.mr_conflicting = 0
 
         self.total_headers = 0
         self.dir_digits = 15
@@ -76,6 +82,8 @@ class CC(Runner):
 
     def parsed(self, url, url_origin, name, parsed, raw_value):
         self.parse_succeed += 1
+        maxage_found = False
+        maxage_conflict_found = False
         for directive in parsed:
             self.directive_count += 1
             self.directives_by_origin[directive][url_origin] += 1
@@ -103,7 +111,9 @@ class CC(Runner):
                     self.param_counts[param] += 1
 
             if directive in self.MAXAGE_DIRECTIVES:
-                self.maxage_count += 1
+                if not maxage_found:
+                    self.maxage_count += 1
+                    maxage_found = True
                 maxage_is_int = False
                 maxage_value = parsed[directive][0]
 
@@ -123,14 +133,27 @@ class CC(Runner):
                         f"{maxage_value} ({type(maxage_value)})"
                     ] += 1
 
-                if self.MAXAGE_CLASHES.intersection(parsed):
-                    self.maxage_clash += 1
+                if (
+                    self.MAXAGE_CLASHES.intersection(parsed)
+                    and not maxage_conflict_found
+                ):
+                    maxage_conflict_found = True
                     if maxage_is_int and maxage_value > 0:
                         self.maxage_conflicting += 1
+                    else:
+                        self.maxage_clash += 1
 
-            if directive == "public":
+            elif directive == "public":
                 if self.PUBLIC_CLASHES.intersection(parsed):
                     self.public_clash += 1
+                if self.PUBLIC_CONFLICTS.intersection(parsed):
+                    self.public_conflicting += 1
+
+            elif directive == "must-revalidate":
+                if self.MUST_REVALIDATE_CLASHES.intersection(parsed):
+                    self.mr_clash += 1
+                if self.MUST_REVALIDATE_CONFLICTS.intersection(parsed):
+                    self.mr_conflicting += 1
 
     def raw(self, url, url_origin, name, value, why):
         if why != "unrecognised":
@@ -204,18 +227,55 @@ class CC(Runner):
         )[: self.SHOW_SAMPLES]:
             print(f"{self.padding}    - {name}, {value:n}")
         print()
-        print(f"* Clashing directives")
-        maxage_clash_rate = self.rate(self.maxage_clash, self.maxage_count)
-        print(
-            f"  - {self.maxage_clash:n} with [s]max-age and conflicting directives present "
-            + f"({maxage_clash_rate:1.3f}% of responses with [s]max-age)"
+        print(f"* Conflicting and unnecessary directives")
+
+        self.show_conflict(
+            "[s]max-age=0", self.maxage_clash, self.maxage_count, self.MAXAGE_CLASHES
         )
-        public_clash_rate = self.rate(
-            self.public_clash, self.defined_directives["public"]
+
+        self.show_conflict(
+            "[s]max-age",
+            self.maxage_conflicting,
+            self.maxage_count,
+            self.MAXAGE_CLASHES,
         )
+
+        self.show_conflict(
+            "public",
+            self.public_clash,
+            self.defined_directives["public"],
+            self.PUBLIC_CLASHES,
+        )
+
+        self.show_conflict(
+            "public",
+            self.public_conflicting,
+            self.defined_directives["public"],
+            self.PUBLIC_CONFLICTS,
+        )
+
+        self.show_conflict(
+            "must-revalidate",
+            self.mr_clash,
+            self.defined_directives["must-revalidate"],
+            self.MUST_REVALIDATE_CLASHES,
+        )
+
+        self.show_conflict(
+            "must-revalidate",
+            self.mr_conflicting,
+            self.defined_directives["must-revalidate"],
+            self.MUST_REVALIDATE_CONFLICTS,
+        )
+
+    def show_conflict(
+        self, directive_name, conflict_count, directive_count, clashing_directives
+    ):
+        conflict_rate = self.rate(conflict_count, directive_count)
         print(
-            f"  - {self.public_clash:n} with public and conflicting directives "
-            + f"({public_clash_rate:1.3f}% of responses with public)"
+            f"  - {conflict_count:n} with {directive_name} "
+            + f"and one of {', '.join(clashing_directives)} "
+            + f"({conflict_rate:1.3f}% of responses with {directive_name})"
         )
 
     def summarise(self, title, results, samples=None, origins=None):
