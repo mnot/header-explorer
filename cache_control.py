@@ -93,7 +93,7 @@ class CacheControl(Runner):
             return
 
         url = raw_headers.get(b":url", "")
-        url_origin = raw_headers.get(b":origin", "")
+        url_origin = raw_headers.get(b":origin", "http://unknown:80/")
         try:
             content_type = parsed_headers.get(b"content-type", ["unknown"])[0]
         except AttributeError:
@@ -209,16 +209,19 @@ class CacheControl(Runner):
             "Defined Response Directives",
             self.defined_directives,
             origins=self.directives_by_origin,
+            sample_cleanup=self.pretty_origin,
         )
         self.summarise(
             "Informal Directives",
             self.informal_directives,
             origins=self.directives_by_origin,
+            sample_cleanup=self.pretty_origin,
         )
         self.summarise(
             "Request Directives",
             self.request_directives,
             origins=self.directives_by_origin,
+            sample_cleanup=self.pretty_origin,
         )
         self.summarise(
             "Misspelled Directives",
@@ -230,7 +233,8 @@ class CacheControl(Runner):
             "Unrecognised Directives",
             self.other_directives,
             self.other_directives_by_origin,
-            origins=self.misspelled_directives_by_origin,
+            origins=self.directives_by_origin,
+            sample_cleanup=self.pretty_origin,
         )
 
         self.summarise(
@@ -314,7 +318,9 @@ class CacheControl(Runner):
             + f"({conflict_rate:1.3f}% of responses with {directive_name})"
         )
 
-    def summarise(self, title, results, samples=None, origins=None):
+    def summarise(
+        self, title, results, samples=None, origins=None, sample_cleanup=lambda a: a
+    ):
         total_directives = sum(results.values())
         extra = ""
         if len(results) > self.SHOW_DIRECTIVES:
@@ -338,7 +344,7 @@ class CacheControl(Runner):
             if samples:
                 sample = ", ".join(
                     [
-                        f"{n} ({v:n} / {int(v/value*100)}%)"
+                        f"{sample_cleanup(n)} ({v:n}/{int(v/value*100)}%)"
                         for n, v in sorted(
                             samples[name].items(), key=itemgetter(1), reverse=True
                         )
@@ -357,6 +363,13 @@ class CacheControl(Runner):
     def compare(self, a, b):
         whole = a + b
         return whole, self.rate(a, whole)
+
+    @lru_cache(maxsize=2 ** 8)
+    def pretty_origin(self, origin):
+        try:
+            return origin.split("/", 3)[2].split(":", 1)[0]
+        except IndexError:
+            return "unknown"
 
     @lru_cache(maxsize=2 ** 12)
     def find_similar(self, directive_name):
