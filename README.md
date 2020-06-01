@@ -35,11 +35,7 @@ In short, if you want to look at these headers, you'll need to pass `-o`; otherw
 
 ## Step 2: Write a Program
 
-Next, you need to write a program that subclasses the `Runner` object in `header_runner.py` and overrides one or both of the `parsed` and `raw` methods. These are called each time the parser runs over a header field.
-
-`parsed` is called when the header is identified as a Structured field, and successfully parsed as such.
-
-`raw` is called when the header can't be treated as a Structured Field, either because it isn't recognised as one, or parsing fails.
+Next, you need to write a program that subclasses the `Runner` object in `header_runner.py` and overrides the `analyse` method. It is called once for header header section.
 
 See `cache_control.py` for an example.
 
@@ -49,6 +45,7 @@ A few things to keep in mind:
 * Make sure you use `#!/usr/bin/env pypy3`; it's quite a bit faster
 * Make sure you `Runner.__init__(self)` if you override `__init__`
 * Runner.INTERESTING is a list of field names (binary!) that are processed; if empty, they'll all be sent to `parsed` and `raw`
+* `:url` and `:origin` are special fields in the raw header dictionary
 * Keep in mind that you're running in a very tight loop; there's [some good advice for this](https://codereview.stackexchange.com/questions/117080/efficiently-processing-large-100-mb-structured-binary-data-in-python-3) on the Internet
 
 ## Step 3: Profit

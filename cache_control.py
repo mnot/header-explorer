@@ -11,8 +11,10 @@ import sys
 
 from header_runner import Runner
 
+CC = b"cache-control"
 
-class CC(Runner):
+
+class CacheControl(Runner):
 
     INTERESTING = [b"cache-control"]
     DEFINED_DIRECTIVES = [
@@ -80,7 +82,18 @@ class CC(Runner):
             self.DEFINED_DIRECTIVES + self.REQUEST_DIRECTIVES + self.INFORMAL_DIRECTIVES
         )
 
-    def parsed(self, url, url_origin, name, parsed, raw_value):
+    def analyse(self, raw_headers, parsed_headers, parse_errors):
+        if CC in raw_headers:
+            if CC in parsed_headers:
+                self.parsed_cc(parsed_headers, raw_headers)
+            else:
+                if parse_errors.get(CC, None):
+                    self.parse_fail += 1
+
+    def parsed_cc(self, parsed_headers, raw_headers):
+        url = raw_headers.get(b":url", "")
+        url_origin = raw_headers.get(b":origin", "")
+        parsed = parsed_headers[CC]
         self.parse_succeed += 1
         maxage_found = False
         maxage_conflict_found = False
@@ -154,10 +167,6 @@ class CC(Runner):
                     self.mr_clash += 1
                 if self.MUST_REVALIDATE_CONFLICTS.intersection(parsed):
                     self.mr_conflicting += 1
-
-    def raw(self, url, url_origin, name, value, why):
-        if why != "unrecognised":
-            self.parse_fail += 1
 
     def show(self):
         print(f"* Total header sets: {self.cursor:n}")
@@ -339,7 +348,7 @@ class CC(Runner):
 
 
 if __name__ == "__main__":
-    checker = CC()
+    checker = CacheControl()
     try:
         checker.run(sys.argv[1])
     except KeyboardInterrupt:

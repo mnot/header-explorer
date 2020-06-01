@@ -74,7 +74,7 @@ class Runner:
         TICK = self.TICK
         BUFSIZE = self.BUFSIZE
         parseLine = self.parseLine
-        check = self.check
+        parse = self.parse
         with gzip.open(filename, "rb") as headerfile:
             headers = {}
             data = headerfile.read(BUFSIZE)
@@ -97,35 +97,18 @@ class Runner:
                         delta = now - last
                         rate = int(TICK / delta)
                         sys.stderr.write(f"- response {self.cursor:n} ({rate:n}/s)\n")
-                    check(headers)
+                    parse(headers)
                     headers = {}
                 else:
                     headers[name] = value
 
-    def parsed(self, url, url_origin, name, parsed, raw_value):
+    def analyse(self, raw_headers, parsed_headers, parse_errors):
         raise NotImplementedError
 
-    def raw(self, url, url_origin, name, value, why):
-        raise NotImplementedError
-
-    def parseLine(self, data, offset):
-        nameLen, valueLen = unpack_from("!HH", data, offset)
-        offset += 4
-        name, value = unpack_from(f"!{nameLen}s{valueLen}s", data, offset)
-        offset += nameLen + valueLen
-        return offset, name, value.decode("latin-1", "replace")
-
-    def check(self, headers):
-        log = False
-        url = ""
-        origin = None
-        for name, value in headers.items():
-            if name == b":url":
-                url = value
-                continue
-            if name == b":origin":
-                origin = value
-                continue
+    def parse(self, raw_headers):
+        parsed_headers = {}
+        parse_errors = {}
+        for name, value in raw_headers.items():
             if self.INTERESTING and name not in self.INTERESTING:
                 self.uninteresting += 1
                 continue
@@ -136,12 +119,19 @@ class Runner:
                 self.empty += 1
                 continue  # we don't consider empty headers to be a problem
             if name not in self.HEADERMAP:
-                self.raw(url, origin, name, value, "unrecognised")
                 continue
             try:
-                self.parsed(url, origin, name, self.parseHeader(name, value), value)
+                parsed_headers[name] = self.parseHeader(name, value)
             except ValueError as why:
-                self.raw(url, origin, name, value, why)
+                parse_errors[name] = why
+        self.analyse(raw_headers, parsed_headers, parse_errors)
+
+    def parseLine(self, data, offset):
+        nameLen, valueLen = unpack_from("!HH", data, offset)
+        offset += 4
+        name, value = unpack_from(f"!{nameLen}s{valueLen}s", data, offset)
+        offset += nameLen + valueLen
+        return offset, name, value.decode("latin-1", "replace")
 
     @functools.lru_cache(maxsize=2 ** 15)
     def parseHeader(self, name, value):
