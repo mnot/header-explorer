@@ -1,6 +1,6 @@
 #!/usr/bin/env pypy3
 
-from collections import defaultdict
+from collections import defaultdict, Counter
 from decimal import Decimal
 import difflib
 from functools import partial, lru_cache
@@ -49,28 +49,28 @@ class CacheControl(Runner):
         self.parse_succeed = 0
         self.parse_fail = 0
         self.directive_count = 0
-        self.defined_directives = defaultdict(int)
-        self.informal_directives = defaultdict(int)
-        self.request_directives = defaultdict(int)
-        self.misspelled_directives = defaultdict(int)
-        self.misspelled_samples = defaultdict(lambda: defaultdict(int))
-        self.misspelled_directives_by_origin = defaultdict(lambda: defaultdict(int))
-        self.other_directives = defaultdict(int)
-        self.other_directives_by_origin = defaultdict(lambda: defaultdict(int))
+        self.defined_directives = Counter()
+        self.informal_directives = Counter()
+        self.request_directives = Counter()
+        self.misspelled_directives = Counter()
+        self.misspelled_samples = defaultdict(lambda: Counter())
+        self.misspelled_directives_by_origin = defaultdict(lambda: Counter())
+        self.other_directives = Counter()
+        self.other_directives_by_origin = defaultdict(lambda: Counter())
 
-        self.directives_by_origin = defaultdict(lambda: defaultdict(int))
-        self.content_types = defaultdict(int)
-        self.directives_by_type = defaultdict(lambda: defaultdict(int))
+        self.directives_by_origin = defaultdict(lambda: Counter())
+        self.content_types = Counter()
+        self.directives_by_type = defaultdict(lambda: Counter())
         self.total_origins = 0
 
-        self.param_counts = defaultdict(int)
+        self.param_counts = Counter()
         self.maxage_count = 0
-        self.maxage_small = defaultdict(int)
+        self.maxage_small = Counter()
         self.maxage_overflow = 0
         self.maxage_decimal = 0
         self.maxage_negative = 0
         self.maxage_nonnumeric = 0
-        self.maxage_nonnumeric_sample = defaultdict(int)
+        self.maxage_nonnumeric_sample = Counter()
         self.maxage_clash = 0
         self.maxage_conflicting = 0
         self.public_clash = 0
@@ -327,9 +327,7 @@ class CacheControl(Runner):
             extra = f" (top {self.SHOW_DIRECTIVES})"
         rate = self.rate(total_directives, self.directive_count)
         print(f"* {title}{extra} - {total_directives:n} ({rate:1.3f}%)")
-        for name, value in sorted(results.items(), key=itemgetter(1), reverse=True)[
-            : self.SHOW_DIRECTIVES
-        ]:
+        for name, value in results.most_common(self.SHOW_DIRECTIVES):
             print(
                 f"  - {value:{self.dir_digits}n} {name} "
                 + f"({self.rate(value, self.total_headers):1.3f}%",
