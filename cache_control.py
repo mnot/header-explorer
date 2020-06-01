@@ -4,7 +4,7 @@ from collections import defaultdict, Counter
 from decimal import Decimal
 import difflib
 from functools import partial, lru_cache
-from itertools import chain, permutations
+from itertools import chain
 from operator import itemgetter
 import sys
 
@@ -36,6 +36,18 @@ class CacheControl(Runner):
     MAXAGE_DIRECTIVES = ["max-age", "s-maxage"]
     SMALL = 60
     MAXAGE_CLASHES = set(["no-store", "no-cache"])
+    COINCIDENT_DIRECTIVES = {
+        "public unnecessary": ("public", frozenset({"max-age", "s-maxage"})),
+        "public conflicting": ("public", frozenset({"no-cache", "no-store"})),
+        "must-revalidate unnecessary": (
+            "must-revalidate",
+            frozenset({"no-store", "no-cache"}),
+        ),
+        "must-revalidate conflicting": (
+            "must-revalidate",
+            frozenset({"stale-while-revalidate", "stale-if-error"}),
+        ),
+    }
     SHOW_DIRECTIVES = 25
     SHOW_SAMPLES = 5
     SIMILARITY_RATIO = 0.8
@@ -98,8 +110,12 @@ class CacheControl(Runner):
         maxage_found = False
         maxage_conflict_found = False
 
-        for pair in self.coincident_pairs(frozenset(parsed.keys())):
-            self.coincidences[pair] += 1
+        for (
+            name,
+            (directive, conflicting_directives),
+        ) in self.COINCIDENT_DIRECTIVES.items():
+            if directive in parsed and conflicting_directives.intersection(parsed):
+                self.coincidences[name] += 1
 
         for directive in parsed:
             self.directive_count += 1
@@ -259,10 +275,8 @@ class CacheControl(Runner):
             self.maxage_count,
             "[s]max-age=0",
         )
-        self.show_conflict("public", ["no-store", "private"])
-        self.show_conflict(
-            "must-revalidate", ["stale-while-revalidate", "stale-if-error"],
-        )
+        self.show_coincidence("public conflicting")
+        self.show_coincidence("must-revalidate conflicting")
 
         print()
         print(f"* Unnecessary directives")
@@ -273,12 +287,12 @@ class CacheControl(Runner):
             self.maxage_count,
             "[s]max-age=0",
         )
-        self.show_conflict(
-            "public", ["max-age", "s-maxage"],
-        )
-        self.show_conflict(
-            "must-revalidate", ["no-store", "no-cache"],
-        )
+        self.show_coincidence("public unnecessary")
+        self.show_coincidence("must-revalidate unnecessary")
+
+    def show_coincidence(self, name):
+        directive_name, clashing_directives = self.COINCIDENT_DIRECTIVES[name]
+        self.show_conflict(directive_name, clashing_directives, self.coincidences[name])
 
     def show_conflict(
         self,
@@ -290,13 +304,6 @@ class CacheControl(Runner):
     ):
         if not display_name:
             display_name = directive_name
-        if not clash_count:
-            clash_count = sum(
-                [
-                    self.coincidences[frozenset({directive_name, clash})]
-                    for clash in clashing_directives
-                ]
-            )
         if not directive_count:
             directive_count = self.defined_directives[directive_name]
         conflict_rate = self.rate(clash_count, directive_count)
@@ -369,16 +376,6 @@ class CacheControl(Runner):
                 highest_similarity = similarity
                 candidate = defined_directive
         return candidate
-
-    @lru_cache(maxsize=2 ** 12)
-    def coincident_pairs(self, directives):
-        return set(
-            [
-                frozenset({a, b})
-                for a, b in permutations(directives, 2)
-                if a in self.DEFINED_DIRECTIVES and b in self.DEFINED_DIRECTIVES
-            ]
-        )
 
 
 if __name__ == "__main__":
