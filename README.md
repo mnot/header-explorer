@@ -54,4 +54,4 @@ Now it's time to run the program. By default, it will use a LOT of memory (~2G) 
 
 You can tune how much memory it uses by adjusting `Runner.BUFSIZE` in your subclass; lower values will impact efficiency.
 
-On my ~2017 Macbook Pro, running the `cache_control.py` sample script will process a headers file _without_ other headers at about 325,000 responses a second.
+On my ~2017 Macbook Pro, running a simple script that processes one header can do so at about 325,000 responses a second; the more complex `cache_control.py` script runs at about 180,000 responses a second.
