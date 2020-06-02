@@ -109,8 +109,6 @@ class CacheControl(Runner):
         self.content_types[content_type] += 1
         parsed = parsed_headers[CC]
         self.parse_succeed += 1
-        maxage_found = False
-        maxage_conflict_found = False
 
         for (
             name,
@@ -151,7 +149,10 @@ class CacheControl(Runner):
                 for param in params:
                     self.param_counts[param] += 1
 
-            if directive in self.MAXAGE_DIRECTIVES:
+        maxage_found = False
+        maxage_conflict_found = False
+        for directive in self.MAXAGE_DIRECTIVES:
+            if directive in parsed:
                 if not maxage_found:
                     self.maxage_count += 1
                     maxage_found = True
