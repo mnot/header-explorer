@@ -71,6 +71,7 @@ class CacheControl(Runner):
         self.content_types = Counter()
         self.directives_by_type = defaultdict(lambda: Counter())
         self.total_origins = 0
+        self.directives_by_https = defaultdict(lambda: Counter())
 
         self.coincidences = Counter()
         self.without_validator = Counter()
@@ -102,6 +103,7 @@ class CacheControl(Runner):
 
         url = raw_headers.get(b":url", "")
         url_origin = raw_headers.get(b":origin", "http://unknown:80/")
+        is_https = url_origin.find("https") == 0
         try:
             content_type = parsed_headers.get(b"content-type", ["unknown"])[0]
         except AttributeError:
@@ -126,6 +128,7 @@ class CacheControl(Runner):
             self.directive_count += 1
             self.directives_by_origin[directive][url_origin] += 1
             self.directives_by_type[content_type][directive] += 1
+            self.directives_by_https[directive][is_https] += 1
             if directive in self.DEFINED_DIRECTIVES:
                 self.defined_directives[directive] += 1
             elif directive in self.INFORMAL_DIRECTIVES:
@@ -144,11 +147,11 @@ class CacheControl(Runner):
                     self.other_directives[directive] += 1
                     self.other_directives_by_origin[directive][url_origin] += 1
 
-#            params = parsed[directive][1]
-#            if params:
-#                for param in params:
-#                    self.param_counts[param] += 1
-#
+        #            params = parsed[directive][1]
+        #            if params:
+        #                for param in params:
+        #                    self.param_counts[param] += 1
+        #
         maxage_found = False
         maxage_conflict_found = False
         for directive in self.MAXAGE_DIRECTIVES:
@@ -249,6 +252,10 @@ class CacheControl(Runner):
 
         self.summarise(
             "Directives by Content Type", self.content_types, self.directives_by_type,
+        )
+
+        self.summarise(
+            "Directives by HTTPS", self.defined_directives, self.directives_by_https
         )
 
         print(f"* Maxage bad values (% of [s]max-age directives)")
