@@ -144,11 +144,11 @@ class CacheControl(Runner):
                     self.other_directives[directive] += 1
                     self.other_directives_by_origin[directive][url_origin] += 1
 
-            params = parsed[directive][1]
-            if params:
-                for param in params:
-                    self.param_counts[param] += 1
-
+#            params = parsed[directive][1]
+#            if params:
+#                for param in params:
+#                    self.param_counts[param] += 1
+#
         maxage_found = False
         maxage_conflict_found = False
         for directive in self.MAXAGE_DIRECTIVES:
