@@ -281,7 +281,7 @@ class CacheControl(Runner):
             self.MAXAGE_CLASHES,
             self.maxage_conflicting,
             self.maxage_count,
-            "[s]max-age=0",
+            "[s]max-age>0",
         )
         self.show_coincidence("public conflicting")
         self.show_coincidence("must-revalidate conflicting")
