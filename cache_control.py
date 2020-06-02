@@ -48,6 +48,7 @@ class CacheControl(Runner):
             frozenset({"stale-while-revalidate", "stale-if-error"}),
         ),
     }
+    NEEDS_VALIDATOR = ["must-revalidate", "no-cache"]
     SHOW_DIRECTIVES = 25
     SHOW_SAMPLES = 5
     SIMILARITY_RATIO = 0.8
@@ -72,6 +73,7 @@ class CacheControl(Runner):
         self.total_origins = 0
 
         self.coincidences = Counter()
+        self.without_validator = Counter()
 
         self.param_counts = Counter()
         self.maxage_count = 0
@@ -116,6 +118,11 @@ class CacheControl(Runner):
         ) in self.COINCIDENT_DIRECTIVES.items():
             if directive in parsed and conflicting_directives.intersection(parsed):
                 self.coincidences[name] += 1
+
+        if b"etag" not in raw_headers and b"last-modified" not in raw_headers:
+            for directive in self.NEEDS_VALIDATOR:
+                if directive in parsed:
+                    self.without_validator[directive] += 1
 
         for directive in parsed:
             self.directive_count += 1
@@ -289,6 +296,15 @@ class CacheControl(Runner):
         )
         self.show_coincidence("public unnecessary")
         self.show_coincidence("must-revalidate unnecessary")
+        self.show_without_validator("must-revalidate")
+        self.show_without_validator("no-cache")
+
+    def show_without_validator(self, name):
+        wo_rate = self.rate(self.without_validator[name], self.defined_directives[name])
+        print(
+            f"  - {self.without_validator[name]:n} {name} without validator"
+            + f" ({wo_rate:1.3f}% of responses with {name})"
+        )
 
     def show_coincidence(self, name):
         directive_name, clashing_directives = self.COINCIDENT_DIRECTIVES[name]
