@@ -55,3 +55,18 @@ Now it's time to run the program. By default, it will use a LOT of memory (~2G) 
 You can tune how much memory it uses by adjusting `Runner.BUFSIZE` in your subclass; lower values will impact efficiency.
 
 On my ~2017 Macbook Pro, running a simple script that processes one header can do so at about 325,000 responses a second; the more complex `cache_control.py` script runs at about 180,000 responses a second.
+
+## Notes and Caveats
+
+You should be wary about inferring too much from the output of these scripts, for a number of reasons:
+
+* The HTTP Archive, while a fantastic resource, is not representative of the whole Web:
+  * They scrape only the top n sites
+  * They only load the homepage, without being logged into the site (where applicable)
+  * Its data is gathered with a single browser, not diverse clients
+  * It is just one point in time
+* Furthermore, what's logged in the archive might not be what's seen "on the wire" byte-for-byte, since browsers can and do modify this information before making it available 
+* The "other" headers are sometimes not reconstructed accurately (as explained above)
+* Headers longer than 254 characters are potentially truncated, so these scripts skip them
+* Non-final responses and trailers are not captured
+* The parsed data is the result of running a Structured Fields parser; when used on headers that aren't defined as Structured Fields, even when the syntax is compatible, some failures will be in error.
