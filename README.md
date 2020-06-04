@@ -44,7 +44,7 @@ A few things to keep in mind:
 * Field names are binary (to avoid the overhead of decoding them); urls and raw values are unicode strings
 * Make sure you use `#!/usr/bin/env pypy3`; it's quite a bit faster
 * Make sure you `Runner.__init__(self)` if you override `__init__`
-* Runner.INTERESTING is a list of field names (binary!) that are processed; if empty, they'll all be sent to `parsed` and `raw`
+* Runner.INTERESTING is a list of field names (binary!) that are fed into `parsed_headers`
 * `:url` and `:origin` are special fields in the raw header dictionary
 * Keep in mind that you're running in a very tight loop; there's [some good advice for this](https://codereview.stackexchange.com/questions/117080/efficiently-processing-large-100-mb-structured-binary-data-in-python-3) on the Internet
 
