@@ -7,7 +7,7 @@ These scripts allow examination of the headers captured by the [HTTP Archive](ht
 
 Headers that can be parsed as [Structured Fields](https://httpwg.org/http-extensions/draft-ietf-httpbis-header-structure.html) are presented as structured data.
 
-**NOTE**: To work with PyPy, `[http-sfv](https://pypi.org/project/http-sfv/)` needs to be manually installed (until PyPy supports Python 3.7).
+**NOTE**: To work with PyPy, [http-sfv](https://pypi.org/project/http-sfv/) needs to be manually installed (until PyPy supports Python 3.7).
 
 
 ## Step 1: Preparation
