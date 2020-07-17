@@ -19,14 +19,13 @@ class SHReport(Runner):
         self.failure = defaultdict(int)
         self.skipped = defaultdict(int)
 
-    def parsed(self, url, url_origin, name, parsed, raw_value):
-        self.succeed[name] += 1
-
-    def raw(self, url, url_origin, name, value, why):
-        if why != "unrecognised":
-            self.failure[name] += 1
-        else:
+    def analyse(self, raw_headers, parsed_headers, parse_errors):
+        for name in raw_headers:
             self.skipped[name] += 1
+        for name in parsed_headers:
+            self.succeed[name] += 1
+        for name in parse_errors:
+            self.failure[name] += 1
 
     def show(self):
         allAttempted = list(set(list(self.succeed.keys()) + list(self.failure.keys())))
