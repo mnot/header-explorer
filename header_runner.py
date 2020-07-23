@@ -8,7 +8,7 @@ from struct import unpack_from, error as structError
 import sys
 from time import time
 
-from http_sfv import parse as sfv_parse, __version__ as sfv_version
+from http_sfv import structures, __version__ as sfv_version
 
 locale.setlocale(locale.LC_ALL, "")
 
@@ -73,19 +73,24 @@ class Runner:
         now = time()
         TICK = self.TICK
         BUFSIZE = self.BUFSIZE
-        parseLine = self.parseLine
-        parse = self.parse
+        parseHeader = self.parseHeader
+        analyse = self.analyse
         with gzip.open(filename, "rb") as headerfile:
-            headers = {}
-            data = headerfile.read(BUFSIZE)
+            raw_headers, parsed_headers, parse_errors = {}, {}, {}
+            buf = bytearray(BUFSIZE)
+            view = memoryview(buf)
+            headerfile.readinto(buf)
             offset = 0
-            while 1:
+            while True:
                 try:
-                    offset, name, value = parseLine(data, offset)
+                    nameLen, valueLen = unpack_from("!HH", view, offset)
+                    offset += 4
+                    name, value = unpack_from(f"!{nameLen}s{valueLen}s", view, offset)
+                    offset += (nameLen + valueLen)
                 except structError:
-                    data = data[offset:] + headerfile.read(BUFSIZE)
-                    offset = 0
-                    if len(data) == 0:
+                    sys.stderr.write("* READ\n")
+                    offset = headerfile.readinto(buf)
+                    if offset == 0:
                         break
                     else:
                         continue
@@ -97,42 +102,37 @@ class Runner:
                         delta = now - last
                         rate = int(TICK / delta)
                         sys.stderr.write(f"- response {self.cursor:n} ({rate:n}/s)\n")
-                    parse(headers)
-                    headers = {}
+                    analyse(raw_headers, parsed_headers, parse_errors)
+                    raw_headers, parsed_headers, parse_errors = {}, {}, {}
                 else:
-                    headers[name] = value
+                    raw_headers[name] = value
+                    try:
+                        parsed = self.parseHeader(name, value)
+                        if parsed is not None:
+                            parsed_headers[name] = parsed
+                    except ValueError as why:
+                        parse_errors[name] = why
 
     def analyse(self, raw_headers, parsed_headers, parse_errors):
         raise NotImplementedError
 
-    def parse(self, raw_headers):
-        parsed_headers = {}
-        parse_errors = {}
-        for name, value in raw_headers.items():
-            if self.INTERESTING and name not in self.INTERESTING:
-                self.uninteresting += 1
-                continue
-            if len(value) > 254:
-                self.too_long += 1
-                continue  # we skip oversized headers because they could be truncated
-            if value.isspace():
-                self.empty += 1
-                continue  # we don't consider empty headers to be a problem
-            if name not in self.HEADERMAP:
-                continue
-            try:
-                parsed_headers[name] = self.parseHeader(name, value)
-            except ValueError as why:
-                parse_errors[name] = why
-        self.analyse(raw_headers, parsed_headers, parse_errors)
-
-    def parseLine(self, data, offset):
-        nameLen, valueLen = unpack_from("!HH", data, offset)
-        offset += 4
-        name, value = unpack_from(f"!{nameLen}s{valueLen}s", data, offset)
-        offset += nameLen + valueLen
-        return offset, name, value.decode("latin-1", "replace")
+    def parseHeader(self, name, value):
+        if self.INTERESTING and name not in self.INTERESTING:
+            self.uninteresting += 1
+            return
+        if len(value) > 254:
+            self.too_long += 1
+            return  # we skip oversized headers because they could be truncated
+        if value.isspace():
+            self.empty += 1
+            return  # we don't consider empty headers to be a problem
+        if name not in self.HEADERMAP:
+            return
+        return self._parseHeader(name, value)
 
     @functools.lru_cache(maxsize=2 ** 15)
-    def parseHeader(self, name, value):
-        return sfv_parse(value, self.HEADERMAP[name])
+    def _parseHeader(self, name, value):
+        structure = structures[self.HEADERMAP[name]]()
+        structure.parse(value)
+        return structure
+

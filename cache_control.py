@@ -102,10 +102,10 @@ class CacheControl(Runner):
             return
 
         url = raw_headers.get(b":url", "")
-        url_origin = raw_headers.get(b":origin", "http://unknown:80/")
-        is_https = url_origin.find("https") == 0
+        url_origin = raw_headers.get(b":origin", b"http://unknown:80/")
+        is_https = url_origin.find(b"https") == 0
         try:
-            content_type = parsed_headers.get(b"content-type", ["unknown"])[0]
+            content_type = parsed_headers.get(b"content-type", [b"unknown"]).value
         except AttributeError:
             content_type = "unknown"
         self.content_types[content_type] += 1
@@ -160,7 +160,7 @@ class CacheControl(Runner):
                     self.maxage_count += 1
                     maxage_found = True
                 maxage_is_int = False
-                maxage_value = parsed[directive][0]
+                maxage_value = parsed[directive].value
 
                 if isinstance(maxage_value, int):
                     maxage_is_int = True
@@ -384,7 +384,7 @@ class CacheControl(Runner):
     @lru_cache(maxsize=2 ** 8)
     def pretty_origin(self, origin):
         try:
-            return origin.split("/", 3)[2].split(":", 1)[0]
+            return origin.split(b"/", 3)[2].split(b":", 1)[0].decode('idna')
         except IndexError:
             return "unknown"
 
