@@ -7,8 +7,6 @@ These scripts allow examination of the headers captured by the [HTTP Archive](ht
 
 Headers that can be parsed as [Structured Fields](https://httpwg.org/http-extensions/draft-ietf-httpbis-header-structure.html) are presented as structured data.
 
-**NOTE**: To work with PyPy, [http-sfv](https://pypi.org/project/http-sfv/) needs to be manually installed (until PyPy supports Python 3.7).
-
 
 ## Step 1: Preparation
 
@@ -53,7 +51,7 @@ A few things to keep in mind:
 
 ## Step 3: Profit
 
-Now it's time to run the program. By default, it will use a LOT of memory (~2G) and all of one core (multiprocessing doesn't appear to be worth it; if you find different, please send a patch).
+Now it's time to run the program. By default, it will use a fair amount of memory (~2G) and all of one core (multiprocessing doesn't appear to be worth it; if you find otherwise, please send a patch).
 
 You can tune how much memory it uses by adjusting `Runner.BUFSIZE` in your subclass; lower values will impact efficiency.
 
