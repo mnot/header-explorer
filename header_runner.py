@@ -8,7 +8,7 @@ from struct import unpack_from, error as structError
 import sys
 from time import time
 
-from http_sfv import parse as sfv_parse, __version__ as sfv_version
+from http_sfv import structures, __version__ as sfv_version
 
 locale.setlocale(locale.LC_ALL, "")
 
@@ -55,6 +55,7 @@ class Runner:
         b"strict-transport-security": "dictionary",
         b"surrogate-control": "dictionary",
         b"te": "list",
+        b"timing-allow-origin": "list",
         b"trailer": "list",
         b"transfer-encoding": "list",
         b"vary": "list",
@@ -131,8 +132,10 @@ class Runner:
         offset += 4
         name, value = unpack_from(f"!{nameLen}s{valueLen}s", data, offset)
         offset += nameLen + valueLen
-        return offset, name, value.decode("latin-1", "replace")
+        return offset, name, value
 
     @functools.lru_cache(maxsize=2 ** 15)
     def parseHeader(self, name, value):
-        return sfv_parse(value, self.HEADERMAP[name])
+        sf = structures[self.HEADERMAP[name]]()
+        sf.parse(value)
+        return sf
