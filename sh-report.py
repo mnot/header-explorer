@@ -17,11 +17,11 @@ class SHReport(Runner):
         Runner.__init__(self)
         self.succeed = defaultdict(int)
         self.failure = defaultdict(int)
-        self.skipped = defaultdict(int)
+        self.seen = defaultdict(int)
 
     def analyse(self, raw_headers, parsed_headers, parse_errors):
         for name in raw_headers:
-            self.skipped[name] += 1
+            self.seen[name] += 1
         for name in parsed_headers:
             self.succeed[name] += 1
         for name in parse_errors:
@@ -39,10 +39,10 @@ class SHReport(Runner):
             failrate = "%1.3f" % (fail / (success + fail) * 100)
             print(f"  - {header.decode('ascii')}: {success:n} / {fail:n} = {failrate}%")
         print()
-        print("* Top 50 Skipped Headers")
-        skipped = sorted(self.skipped.items(), key=itemgetter(1))
-        skipped.reverse()
-        for (header, count) in skipped[:50]:
+        print("* Top 50 Headers")
+        seen = sorted(self.seen.items(), key=itemgetter(1))
+        seen.reverse()
+        for (header, count) in seen[:50]:
             print(f"  - {header.decode('ascii')}: {count:n}")
 
 
