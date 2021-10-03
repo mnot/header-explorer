@@ -28,6 +28,7 @@ class Runner:
         b"access-control-allow-headers": "list",
         b"access-control-allow-methods": "list",
         b"access-control-allow-origin": "item",
+        b"access-control-expose-headers": "list",
         b"access-control-max-age": "item",
         b"access-control-request-headers": "list",
         b"access-control-request-method": "item",
@@ -42,6 +43,7 @@ class Runner:
         b"content-language": "list",
         b"content-length": "item",
         b"content-type": "item",
+        b"cross-origin-resource-policy": "item",
         b"expect": "item",
         b"expect-ct": "dictionary",
         b"forwarded": "dictionary",
@@ -60,6 +62,7 @@ class Runner:
         b"transfer-encoding": "list",
         b"vary": "list",
         b"x-content-type-options": "item",
+        b"x-frame-options": "item",
         b"x-xss-protection": "list",
     }
 
