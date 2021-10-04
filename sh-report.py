@@ -30,14 +30,16 @@ class SHReport(Runner):
     def show(self):
         allAttempted = list(set(list(self.succeed.keys()) + list(self.failure.keys())))
         allAttempted.sort()
+        longestName = max([len(n) for n in list(self.succeed.keys()) + list(self.failure.keys())])
+        maxDigits = len(f"{max(list(self.succeed.values() or [0]) + list(self.failure.values() or [0])):,}")
         print()
         print(f"* Requests: {checker.cursor:n}")
         print("* Parsing Results (succeed / fail)")
         for header in allAttempted:
             success = self.succeed.get(header, 0)
             fail = self.failure.get(header, 0)
-            failrate = "%1.3f" % (fail / (success + fail) * 100)
-            print(f"  - {header.decode('ascii')}: {success:n} / {fail:n} = {failrate}%")
+            failrate = fail / (success + fail)
+            print(f"  {header.decode('ascii'):<{longestName}}: {success:>{maxDigits},} / {fail:>{maxDigits},} = {failrate:>8.3%}")
         print()
         print("* Top 50 Headers")
         seen = sorted(self.seen.items(), key=itemgetter(1))
