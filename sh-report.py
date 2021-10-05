@@ -39,12 +39,12 @@ class SHReport(Runner):
             success = self.succeed.get(header, 0)
             fail = self.failure.get(header, 0)
             failrate = fail / (success + fail)
-            print(f"  {header.decode('ascii'):<{longestName}}: {success:>{maxDigits},} / {fail:>{maxDigits},} = {failrate:>8.3%}")
+            print(f"{header.decode('ascii'):<{longestName}} {success:>{maxDigits},} / {fail:>{maxDigits},} = {failrate:>8.3%}")
         print()
-        print("* Top 50 Headers")
+        print("* Top 100 Headers")
         seen = sorted(self.seen.items(), key=itemgetter(1))
         seen.reverse()
-        for (header, count) in seen[:50]:
+        for (header, count) in seen[:100]:
             print(f"  - {header.decode('ascii')}: {count:n}")
 
 
