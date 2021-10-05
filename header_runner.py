@@ -8,6 +8,9 @@ from struct import unpack_from, error as structError
 import sys
 from time import time
 
+#from http_sfv import util
+#util.COMPAT = True
+
 from http_sfv import structures, __version__ as sfv_version
 
 locale.setlocale(locale.LC_ALL, "")
@@ -52,6 +55,7 @@ class Runner:
         b"pragma": "dictionary",
         b"prefer": "dictionary",
         b"preference-applied": "dictionary",
+        b"referrer-policy": "list",
         b"retry-after": "item",
         b"surrogate-control": "dictionary",
         b"te": "list",
@@ -117,7 +121,7 @@ class Runner:
             if len(value) > 254:
                 self.too_long += 1
                 continue  # we skip oversized headers because they could be truncated
-            if value.isspace():
+            if len(value) == 0 or value.isspace():
                 self.empty += 1
                 continue  # we don't consider empty headers to be a problem
             if name not in self.HEADERMAP:
